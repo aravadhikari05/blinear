@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import RLinear, RMLP, STD
+from models import RLinear, Bayes_DLinear, Bayes_DLinear, Bayes_DLinear, DLinear, NLinear
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
 from utils.metrics import metric
 
@@ -20,8 +20,11 @@ class Exp_Main(Exp_Basic):
     def _build_model(self):
         model_dict = {
             'RLinear': RLinear,
-            'RMLP': RMLP,
-            'STD': STD
+            'NLinear': NLinear,
+            'DLinear': DLinear,
+            'Bayes_DLinear': Bayes_DLinear,
+            'Bayes_DLinear': Bayes_DLinear,
+            'Bayes_DLinear': Bayes_DLinear
         }
         model = model_dict[self.args.model].Model(self.args).float()
         
@@ -48,9 +51,20 @@ class Exp_Main(Exp_Basic):
                 
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        _, loss = self.model(batch_x, batch_y)
+                        output = self.model(batch_x, batch_y)
+                        if isinstance(output, tuple) and len(output) == 3:
+                            _, mse, kl = output
+                            loss = mse + self.args.beta * kl  # beta can be a CLI/config arg
+                        else:
+                            _, loss = output
 
-                else: _, loss = self.model(batch_x, batch_y)
+                else: 
+                    output = self.model(batch_x, batch_y)
+                    if isinstance(output, tuple) and len(output) == 3:
+                        _, mse, kl = output
+                        loss = mse + self.args.beta * kl  # beta can be a CLI/config arg
+                    else:
+                        _, loss = output
 
                 total_loss.append(loss.detach().cpu())
 
@@ -94,11 +108,20 @@ class Exp_Main(Exp_Basic):
 
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        _, loss = self.model(batch_x, batch_y)
-                        train_loss.append(loss.item())
+                        output = self.model(batch_x, batch_y)
+                        if isinstance(output, tuple) and len(output) == 3:
+                            _, mse, kl = output
+                            loss = mse + self.args.beta * kl  # beta can be a CLI/config arg
+                        else:
+                            _, loss = output
                 else:
-                    _, loss = self.model(batch_x, batch_y)
-                    train_loss.append(loss.item())
+                    output = self.model(batch_x, batch_y)
+                    if isinstance(output, tuple) and len(output) == 3:
+                        _, mse, kl = output
+                        loss = mse + self.args.beta * kl  # beta can be a CLI/config arg
+                    else:
+                        _, loss = output
+                train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
@@ -158,9 +181,17 @@ class Exp_Main(Exp_Basic):
 
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        outputs, _ = self.model(batch_x, batch_y)
-
-                else: outputs, _ = self.model(batch_x, batch_y)
+                        outputs = self.model(batch_x, batch_y)
+                        if isinstance(outputs, tuple) and len(outputs) == 3:
+                            outputs, loss, _ = outputs
+                        else:
+                            outputs, loss = outputs
+                else: 
+                    outputs = self.model(batch_x, batch_y)
+                    if isinstance(outputs, tuple) and len(outputs) == 3:
+                        outputs, loss, _ = outputs
+                    else:
+                        outputs, loss = outputs
 
                 pred = outputs.detach().cpu().numpy()
                 true = batch_y.detach().cpu().numpy()
@@ -208,7 +239,8 @@ class Exp_Main(Exp_Basic):
                     with torch.cuda.amp.autocast():
                         outputs, _ = self.model(batch_x, batch_y)
 
-                else: outputs, _ = self.model(batch_x, batch_y)
+                else: 
+                    outputs, _ = self.model(batch_x, batch_y)
 
                 preds.append(outputs.detach().cpu().numpy())
 

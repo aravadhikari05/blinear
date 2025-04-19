@@ -1,6 +1,9 @@
+<!-- TEST -->
+python3 -u run.py --is_training 1 --data_path ETTh1.csv --data ETTh1 --features M --channel 7 --itr 1 --batch_size 128 --learning_rate 0.005 --model BLinear --rev --seq_len 336 --pred_len 96 --beta 1e-4
+
 <!-- ETTh1 -->
 
-python -u run.py --is_training 1 --data_path ETTh1.csv --data ETTh1 --features M --channel 7 --itr 1 --batch_size 128 --learning_rate 0.005 --model Linear --rev --seq_len 336 --pred_len 96 --gpu 3
+python3 -u run.py --is_training 1 --data_path ETTh1.csv --data ETTh1 --features M --channel 7 --itr 1 --batch_size 128 --learning_rate 0.005 --model RLinear --rev --seq_len 336 --pred_len 96 --gpu 3
 
 <!-- ETTm1 -->
 
